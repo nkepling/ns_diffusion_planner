@@ -5,15 +5,27 @@ from value_iteration import value_iteration
 import ns_gym
 from tqdm import tqdm
 import warnings
+from itertools import permutations
 
-def is_reachable(env, state, goal):
-    """Check if a particular state is reachable from the start state.
+def in_graph(graph, start):
+  return np.all((start >= [0, 0]) & (start < graph.shape))
+  
+def dfs(graph, start, goal):
+  graph[tuple(start)] = True
+  actions = np.array([[0, 1], [0, -1], [1, 0], [-1, 0]])
+  for action in actions:
+    newstart = start + action
+    if in_graph(graph, newstart) and not graph[tuple(newstart)]: #... and not already visited or a hole
+      graph = dfs(graph, start + action, goal)
+  return graph
+  
 
-    TODO: DFS or BFS to check if a state is reachable from the start state.
-    """
-
-    # warnings.warn("This function is not implemented yet.")
-    return True
+def is_reachable(map, start, goal):
+    """Check if a particular state is reachable from the start state."""
+    graph = (map > 0) # generate a boolean matrix for searching 
+    graph[goal] = False
+    graph = dfs(graph, np.array(start), np.array(goal))
+    return graph[goal]
 
 
 def generate_episode_trace(env, num_episodes, max_steps):
@@ -63,7 +75,7 @@ def make_gym_env(p, map):
     ns_env = ns_gym.wrappers.NSFrozenLakeWrapper(env,parameter_map,change_notification=True,delta_change_notification=True)
     return ns_env
 
-def generate_data(p, num_episdodes, max_steps, map_size, max_holes, min_holes):
+def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes):
     """Generate data for the FrozenLake environment.
     """
     total_number_of_maps = np.sum([np.math.factorial(map_size**2)/(np.math.factorial(map_size**2-i)*np.math.factorial(i)) for i in range(min_holes,max_holes+1)])
