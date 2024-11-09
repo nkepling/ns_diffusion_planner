@@ -6,6 +6,7 @@ import ns_gym
 from tqdm import tqdm
 import warnings
 from itertools import permutations
+from visualize import visualize_value_map, visualize_frozen_lake, visualize_frozen_lake_rectangles
 
 def in_graph(graph, start):
   return np.all((start >= [0, 0]) & (start < graph.shape))
@@ -70,27 +71,41 @@ def make_gym_env(p, map):
     env = gym.make('FrozenLake-v1', desc=map)
     param_name = "P"
     scheduler = ns_gym.schedulers.ContinuousScheduler()
-    update_fn = ns_gym.update_functions.DistributionStepWiseUpdate(scheduler=scheduler,update_values=[p])
+    update_fn = ns_gym.update_functions.DistributionNoUpdate(scheduler=scheduler)
     parameter_map = {param_name: update_fn}
-    ns_env = ns_gym.wrappers.NSFrozenLakeWrapper(env,parameter_map,change_notification=True,delta_change_notification=True)
+    ns_env = ns_gym.wrappers.NSFrozenLakeWrapper(env,parameter_map,change_notification=True,delta_change_notification=True,initial_prob_dist=[p,(1-p)/2,(1-p)/2])
     return ns_env
 
-def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes):
+
+def get_value_map(ns_env,gamma=0.9,theta=1e-6):
+    policy, V = value_iteration(ns_env,gamma=gamma,theta=theta)
+    return V
+
+def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes,visualize=False):
     """Generate data for the FrozenLake environment.
     """
     total_number_of_maps = np.sum([np.math.factorial(map_size**2)/(np.math.factorial(map_size**2-i)*np.math.factorial(i)) for i in range(min_holes,max_holes+1)])
 
     print(f"Total number of maps: {total_number_of_maps}")
     map = generate_new_map(size=map_size, max_steps=max_steps, max_holes=max_holes, min_holes=min_holes)
-    print(map)
+    map = ["SFFF", "FHFH", "FFFH", "HFFG"]
 
     # TODO add loop to generate data for all maps
 
-    # ns_env = make_gym_env(p, map)
+    ns_env = make_gym_env(p, map)
+    out = ns_env.reset()
+    print(out)
+    out = ns_env.step(1)
+    # ns_env.reset()
+    # out = ns_env.step(0)
+    if visualize:
+        visualize_frozen_lake_rectangles(map)
+        visualize_value_map(ns_env,map_size)
+
+
 
 if __name__ == "__main__":
-    
-    generate_data(0.1, 100, 1000, 6, 6, 1)
+    generate_data(0.25, 100, 1000, 4, 4, 4,visualize=True)
 
 
 
