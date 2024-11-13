@@ -3,10 +3,11 @@ import numpy as np
 import gymnasium as gym
 from value_iteration import value_iteration
 import ns_gym
-from tqdm import tqdm
-import warnings
-from itertools import permutations
 from visualize import visualize_value_map, visualize_frozen_lake, visualize_frozen_lake_rectangles
+import pandas as pd 
+from collections import defaultdict
+import csv
+import os
 
 def in_graph(graph, start):
   return np.all((start >= [0, 0]) & (start < graph.shape))
@@ -27,12 +28,6 @@ def is_reachable(map, start, goal):
     graph[goal] = False
     graph = dfs(graph, np.array(start), np.array(goal))
     return graph[goal]
-
-
-def generate_episode_trace(env, num_episodes, max_steps):
-    """For a particular environment, generate a dataset of state, action, reward, next_state, and done tuples.
-    """
-    pass
 
 def generate_new_map(size=8,max_steps=1000,max_holes=4,min_holes=0,seed=None):
     """Generate a new map for the FrozenLake environment.
@@ -58,13 +53,14 @@ def generate_new_map(size=8,max_steps=1000,max_holes=4,min_holes=0,seed=None):
         map[x,y] = 3
 
     if not is_reachable(map,(0,0),(size-1,size-1)):
+        seed = seed+1
         return generate_new_map(size,max_steps,max_holes,min_holes,seed)
     
     map_to_str = {0: 'F', 1: 'S', 2: 'G', 3: 'H'}
 
     map_str = ["".join([map_to_str[map[i,j]] for j in range(size)]) for i in range(size)]
 
-    return map_str
+    return map_str,seed
 
 
 def make_gym_env(p, map):
@@ -77,38 +73,107 @@ def make_gym_env(p, map):
     return ns_env
 
 
-def get_value_map(ns_env,gamma=0.9,theta=1e-6):
+def get_sample(ns_env,map_size,gamma=0.9,theta=1e-6):
+    """Compute value map and concatinate it wiht one-hot encoded actions. 
+    """
     policy, V = value_iteration(ns_env,gamma=gamma,theta=theta)
+
+    # policy = policy.reshape((map_size,map_size))
+    # V = V.reshape((map_size,map_size))
+
+    # # one-hot encode actions
+
+    # one_hot = np.zeros((4,map_size,map_size))
+
+    # for i in range(map_size):
+    #     for j in range(map_size):
+    #         action = policy[i,j]
+    #         one_hot[action,i,j] = 1
+
+    # concat Value map and one-hot encoded actions
+
+    V = V.reshape((1,map_size,map_size))
+
+    #X = np.concatenate([V,one_hot],axis=0) # concat along the channel dimension (first dimension)
+
+    # Ensuure dim (channels, height, width) on when we include batch size (batch_size, channels, height, width)
+
     return V
 
-def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes,visualize=False):
+def store_metadata(id,seed):
+    """Store metadata for the dataset.
+    """
+    meta_data_dict["id"].append(id)
+    meta_data_dict["seed"].append(seed)
+
+def save_metadata(file_path):
+    """Save metadata to disk.
+    """
+    # Check if the file exists and is empty or not
+    file_exists = os.path.isfile(file_path) and os.path.getsize(file_path) > 0
+
+    # Append data to CSV, including the header only if the file is empty
+    with open(file_path, mode='a', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=meta_data_dict.keys())
+        
+        # Write header only if the file is new or empty
+        if not file_exists:
+            writer.writeheader()
+            
+        # Append the data
+        writer.writerows([dict(zip(meta_data_dict, t)) for t in zip(*meta_data_dict.values())])
+
+
+def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes,save_path,meta_data_path,visualize=False,start_seed=None):
     """Generate data for the FrozenLake environment.
     """
     total_number_of_maps = np.sum([np.math.factorial(map_size**2)/(np.math.factorial(map_size**2-i)*np.math.factorial(i)) for i in range(min_holes,max_holes+1)])
 
     print(f"Total number of maps: {total_number_of_maps}")
-    map = generate_new_map(size=map_size, max_steps=max_steps, max_holes=max_holes, min_holes=min_holes)
-    map = ["SFFF", "FHFH", "FFFH", "HFFG"]
 
-    # TODO add loop to generate data for all maps
+    id = 0
 
-    ns_env = make_gym_env(p, map)
-    out = ns_env.reset()
-    print(out)
-    out = ns_env.step(1)
-    # ns_env.reset()
-    # out = ns_env.step(0)
-    if visualize:
-        visualize_frozen_lake_rectangles(map)
-        visualize_value_map(ns_env,map_size)
+    if start_seed is not None:
+        seed = start_seed
+    else:
+        seed = 0
 
+    while id < num_episodes:
+        map,seed = generate_new_map(size=map_size, max_steps=max_steps, max_holes=max_holes, min_holes=min_holes,seed = seed)
+        
+        store_metadata(id,seed)
+
+        ns_env = make_gym_env(p, map)
+        out = ns_env.reset()
+
+        if visualize:
+            visualize_frozen_lake_rectangles(map)
+            visualize_value_map(ns_env,map_size)
+
+        X = get_sample(ns_env,map_size)
+
+        # compress X and save it to disk
+        np.savez_compressed(save_path+f"_{id}.npy",X)
+
+        if id % 1000 == 0:
+            print(f"Generated {id} samples")
+            save_metadata(meta_data_path)
+
+        id += 1
+        seed += 1
+
+    
+    
+    save_metadata(meta_data_path)
+    print(f"Generated {num_episodes} samples")
 
 
 if __name__ == "__main__":
-    generate_data(0.25, 100, 1000, 4, 4, 4,visualize=True)
+    save_path = "data/p1/p1"
+    meta_data_path = "data/p1/p1_metadata.csv"
 
+    meta_data_dict = defaultdict(list)
 
+    generate_data(1, 20, 1000, 10, 4, 4, save_path=save_path,meta_data_path=meta_data_path,visualize=False)
 
-
-
-
+    print("Data generation complete")

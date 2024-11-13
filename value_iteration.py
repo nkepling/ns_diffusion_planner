@@ -1,8 +1,6 @@
 import numpy as np
 
 
-
-
 def value_iteration(env, gamma=0.9, theta=1e-6):
     """
     Perform value iteration on a Gymnasium environment.
@@ -49,4 +47,5 @@ def value_iteration(env, gamma=0.9, theta=1e-6):
             for action in range(env.action_space.n)
         ])
 
+        
     return policy, V

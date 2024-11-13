@@ -24,6 +24,10 @@ pip install git+https://github.com/scope-lab-vu/ns_gym.git
 I think given the stochtistic nature of Frozenlake rather than "denoising" state-action trajectories we learn to sample value "Value Map Images" conditioned on different FrozenLake obstacle configurations. Once we get the stationary value maps going we can see how well they work. 
 
 
+## Future note:
+
+rather than a full Bellman update do a bellman eval 
+
 
 
 
