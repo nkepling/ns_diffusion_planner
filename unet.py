@@ -5,6 +5,9 @@ import torch.nn as nn
 # I refrence this implementation from the following link: https://github.com/milesial/Pytorch-UNet/tree/master
 
 
+# TODO: append time vector to input... 
+
+
 class SpatialAttention(nn.Module):
     def __init__(self, kernel_size=3):  # Changed kernel size to 3
         super(SpatialAttention, self).__init__()
@@ -27,7 +30,7 @@ class DoubleConv(nn.Module):
         self.double_conv = nn.Sequential(nn.Conv2d(in_channels,out_channels,kernel_size=3,padding=1),
                                             nn.BatchNorm2d(out_channels),
                                             nn.ReLU(inplace=True),
-                                            nn.Conv2d(out_channels,out_channels,kernel_size=3,padding=1),
+                                               nn.Conv2d(out_channels,out_channels,kernel_size=3,padding=1),
                                             nn.BatchNorm2d(out_channels),
                                             nn.ReLU(inplace=True))
     def forward(self, x):

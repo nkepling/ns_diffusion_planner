@@ -1,25 +1,57 @@
-import torch as tr
+import torch
 from torch import nn
 
+
+
 class DiffusionModel(nn.Module):
-
-  def __init__(self, design_matrix: tr.Tensor, unet) -> None:
-    self.X = design_matrix
-    (self.N, self.D) = design_matrix.shape
+    def __init__(self,score_model) -> None:
+        self.score_model = score_model
+        
+    def forward(self, XT,t):
+        """Predict the score at time t for the a noisy input XT
+        """
+        time_embedding = self.time_embedding(t)
+        return self.score_model(XT,t)
     
-    self.unet = unet
+    def sliced_score_matching(self,X):
+        """Sliced Score Matching
+        """
+        X = X.clone().detach().requires_grad_(True)
+        V = torch.randn(X.shape)
+        S = self(X)
+        VS = torch.sum(V * S, axis=1)
+        rhs = .5 * VS ** 2
+        gVS = torch.autograd.grad(VS, self.X, grad_outputs=torch.ones_like(VS),create_graph=True)[0]
+        lhs = torch.sum(V * gVS, axis=1)    
+        F_Divergence = torch.mean(lhs - rhs)
+        return F_Divergence
+    
 
-  def forward(self, x):
+    def time_embedding(self, x):
+        """Maybe embed the time vector here? 
+        """
+        return 0
+    
+    def forward_diffusion(self, x):
+        """
+        Forward diffusion: image -> noise
 
-    return 0
-  
-  def sliced_score_matching(self):
-    X = self.X.clone().detach().requires_grad_(True)
-    V = tr.randn((self.N, self.D))
-    S = self.forward(self.X)
-    VS = tr.sum(V * S, axis=1)
-    rhs = .5 * VS ** 2
-    gVS = tr.autograd.grad(VS, self.X, grad_outputs=tr.ones_like(VS),create_graph=True)[0]
-    lhs = tr.sum(V * gVS, axis=1)    
-    F_Divergence = tr.mean(lhs - rhs)
-    return F_Divergence
+        Add noise to the image to get the noise sample
+        """
+        return 0
+    
+    def sample(self, shape, num_steps, device):
+        """Reverse diffusion sampling: noise -> image
+        """
+        return 0
+        
+    
+
+
+    
+
+
+    
+
+
+    

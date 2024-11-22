@@ -100,36 +100,43 @@ def get_sample(ns_env,map_size,gamma=0.9,theta=1e-6):
 
     return V
 
-def store_metadata(id,seed):
-    """Store metadata for the dataset.
-    """
-    meta_data_dict["id"].append(id)
-    meta_data_dict["seed"].append(seed)
+class MetaData:
+    def __init__(self):
+        self.meta_data_dict = defaultdict(list)
 
-def save_metadata(file_path):
-    """Save metadata to disk.
-    """
-    # Check if the file exists and is empty or not
-    file_exists = os.path.isfile(file_path) and os.path.getsize(file_path) > 0
 
-    # Append data to CSV, including the header only if the file is empty
-    with open(file_path, mode='a', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=meta_data_dict.keys())
-        
-        # Write header only if the file is new or empty
-        if not file_exists:
-            writer.writeheader()
+    def store_metadata(self,id,seed):
+        """Store metadata for the dataset.
+        """
+        self.meta_data_dict["id"].append(id)
+        self.meta_data_dict["seed"].append(seed)
+
+    def save_metadata(self,file_path):
+        """Save metadata to disk.
+        """
+        # Check if the file exists and is empty or not
+        file_exists = os.path.isfile(file_path) and os.path.getsize(file_path) > 0
+
+        # Append data to CSV, including the header only if the file is empty
+        with open(file_path, mode='a', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=self.meta_data_dict.keys())
             
-        # Append the data
-        writer.writerows([dict(zip(meta_data_dict, t)) for t in zip(*meta_data_dict.values())])
+            # Write header only if the file is new or empty
+            if not file_exists:
+                writer.writeheader()
+                
+            # Append the data
+            writer.writerows([dict(zip(self.meta_data_dict, t)) for t in zip(*self.meta_data_dict.values())])
+
+    
 
 
-def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes,save_path,meta_data_path,visualize=False,start_seed=None):
+def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes,save_path,meta_data_logger,meta_data_path,visualize=False,start_seed=None):
     """Generate data for the FrozenLake environment.
     """
     total_number_of_maps = np.sum([np.math.factorial(map_size**2)/(np.math.factorial(map_size**2-i)*np.math.factorial(i)) for i in range(min_holes,max_holes+1)])
 
-    print(f"Total number of maps: {total_number_of_maps}")
+    print(f"Total number of possible maps: {total_number_of_maps}")
 
     id = 0
 
@@ -141,7 +148,7 @@ def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes,sav
     while id < num_episodes:
         map,seed = generate_new_map(size=map_size, max_steps=max_steps, max_holes=max_holes, min_holes=min_holes,seed = seed)
         
-        store_metadata(id,seed)
+        meta_data_logger.store_metadata(id,seed)
 
         ns_env = make_gym_env(p, map)
         out = ns_env.reset()
@@ -157,23 +164,24 @@ def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes,sav
 
         if id % 1000 == 0:
             print(f"Generated {id} samples")
-            save_metadata(meta_data_path)
+            meta_data_logger.save_metadata(meta_data_path)
 
         id += 1
         seed += 1
 
     
     
-    save_metadata(meta_data_path)
+    meta_data_logger.save_metadata(meta_data_path)
     print(f"Generated {num_episodes} samples")
 
 
 if __name__ == "__main__":
     save_path = "data/p1/p1"
-    meta_data_path = "data/p1/p1_metadata.csv"
+    meta_data_path = "data/p1_metadata.csv"
 
-    meta_data_dict = defaultdict(list)
+    # meta_data_dict = defaultdict(list)
+    meta_data_logger = MetaData()
 
-    generate_data(1, 20, 1000, 10, 4, 4, save_path=save_path,meta_data_path=meta_data_path,visualize=False)
+    generate_data(1, 20, 1000, 10, 4, 4, save_path=save_path,meta_data_logger=meta_data_logger,meta_data_path=meta_data_path,visualize=False)
 
     print("Data generation complete")
