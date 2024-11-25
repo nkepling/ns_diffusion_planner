@@ -12,22 +12,31 @@ class DiffusionModel(nn.Module):
         t = self.time_embedding(t)
         return self.score_model(XT, t)
 
-    def sliced_score_matching(self, X):
+    def sliced_score_matching(self, X, t):
         """Sliced Score Matching
         """
+        # compute score
         X = X.clone().detach().requires_grad_(True)
-        V = torch.randn(X.shape)
-        S = self(X)
+        S = self(X, t).flatten(start_dim=1)
+
+        # get unit vectors
+        V = torch.randn(S.shape)
+        V = V / torch.norm(V, dim=1)[:, None]
+
         VS = torch.sum(V * S, axis=1)
         rhs = .5 * VS ** 2
+
         gVS = torch.autograd.grad(
-            VS, self.X, grad_outputs=torch.ones_like(VS), create_graph=True)[0]
+            VS, X, grad_outputs=torch.ones_like(VS), create_graph=True)[0]
+        gVS = gVS.flatten(start_dim=1)
+
         lhs = torch.sum(V * gVS, axis=1)
         F_Divergence = torch.mean(lhs - rhs)
         return F_Divergence
 
     def time_embedding(self, t):
-        """Maybe embed the time vector here? 
+        """Maybe embed the time vector here?
+           We can keep it linear for now, since it will be limited [0,1]
         """
         return t
 

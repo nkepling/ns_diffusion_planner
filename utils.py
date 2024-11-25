@@ -1,6 +1,5 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
-import numpy as np
+from torch.utils.data import Dataset
 import os
 import yaml
 
@@ -25,18 +24,36 @@ class ValueMapData(Dataset):
         Reads and decompresses an .npz file by index.
 
         Args:
-            index (int): Index of the file to read.
+            index (int or slice): Index of the file to read.
 
         Returns:
             tuple: A tuple containing input data and target value loaded from the .npz file.
         """
-        file_path = os.path.join(self.data_dir, self.file_list[index])
+        if isinstance(index, slice):  # Handle slicing
+            # Get the indices for the slice
+            indices = range(*index.indices(len(self.file_list)))
+            num_items = len(indices)  # Number of items in the slice
 
-        X = torch.load(file_path, weights_only=True)
+            # Load the first item to determine its shape
+            first_file_path = os.path.join(
+                self.data_dir, self.file_list[indices[0]])
+            first_item = torch.load(first_file_path, weights_only=True)
 
-        # Convert to PyTorch tensors
+            # Preallocate a tensor for all items
+            items = torch.empty((num_items, *first_item.shape),
+                                dtype=first_item.dtype, device=first_item.device)
 
-        return X
+            # Fill the tensor
+            for i, idx in enumerate(indices):
+                file_path = os.path.join(self.data_dir, self.file_list[idx])
+                items[i] = torch.load(file_path, weights_only=True)
+
+            return items
+
+        else:  # Handle single index
+            file_path = os.path.join(self.data_dir, self.file_list[index])
+            X = torch.load(file_path, weights_only=True)
+            return X
 
     def __len__(self):
         """

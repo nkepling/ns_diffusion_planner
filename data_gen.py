@@ -147,7 +147,7 @@ def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes, sa
         X = get_sample(ns_env, map_size)
 
         # compress X and save it to disk
-        X = torch.tensor(X)
+        X = torch.tensor(X).reshape((map_size, map_size, 4))
         torch.save(X, save_path + f"_{id}.pt")
 
         if id % 1000 == 0:
