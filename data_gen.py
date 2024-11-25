@@ -1,9 +1,9 @@
 import torch
 import numpy as np
 import gymnasium as gym
-from value_iteration import value_iteration
+from value_iteration import q_value_iteration
 import ns_gym
-from visualize import visualize_value_map, visualize_frozen_lake, visualize_frozen_lake_rectangles
+from visualize import visualize_value_map, visualize_frozen_lake_rectangles
 import pandas as pd
 from collections import defaultdict
 import csv
@@ -83,7 +83,7 @@ def make_gym_env(p, map):
 
 def get_sample(ns_env, map_size, gamma=0.9, theta=1e-6):
     """Compute q-value map"""
-    policy, QV = value_iteration(ns_env, gamma=gamma, theta=theta)
+    policy, QV = q_value_iteration(ns_env, gamma=gamma, theta=theta)
     return QV
 
 
@@ -145,9 +145,11 @@ def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes, sa
             visualize_value_map(ns_env, map_size)
 
         X = get_sample(ns_env, map_size)
+        X = X.reshape(map_size, map_size, ns_env.action_space.n)
+        X = np.transpose(X, axes=[2, 0, 1])
 
         # compress X and save it to disk
-        X = torch.tensor(X).reshape((map_size, map_size, 4))
+        X = torch.tensor(X)
         torch.save(X, save_path + f"_{id}.pt")
 
         if id % 1000 == 0:
@@ -167,6 +169,7 @@ if __name__ == "__main__":
     meta_data_logger = MetaData()
 
     generate_data(1, 20, 1000, 10, 4, 4, save_path=save_path,
-                  meta_data_logger=meta_data_logger, meta_data_path=meta_data_path, visualize=False)
+                  meta_data_logger=meta_data_logger,
+                  meta_data_path=meta_data_path)
 
     print("Data generation complete")

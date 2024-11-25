@@ -1,4 +1,4 @@
-from value_iteration import value_iteration
+from value_iteration import q_value_iteration
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import ListedColormap
@@ -12,7 +12,7 @@ def visualize_value_map(env, map_size):
     Each square contains four triangles representing the Q-values
     for the possible actions in that state.
     """
-    policy, QV = value_iteration(env)
+    policy, QV = q_value_iteration(env)
     fig, ax = plt.subplots(figsize=(10, 10))
 
     # Loop over the grid to plot Q-values

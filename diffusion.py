@@ -40,7 +40,7 @@ class DiffusionModel(nn.Module):
         """
         return t
 
-    def forward_diffusion(self, x):
+    def preturb_data(self, x):
         """
         Forward diffusion: image -> noise
 

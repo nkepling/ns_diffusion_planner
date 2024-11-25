@@ -1,8 +1,7 @@
 import numpy as np
-from itertools import product
 
 
-def value_iteration(env, gamma=0.9, theta=1e-6):
+def q_value_iteration(env, gamma=0.9, theta=1e-6):
     """
     Perform value iteration on a Gymnasium environment.
 
@@ -21,7 +20,7 @@ def value_iteration(env, gamma=0.9, theta=1e-6):
     while True:
         delta = 0
         # Update each state's value
-        for state, action in product(range(env.observation_space.n), range(env.action_space.n)):
+        for state, action in np.ndindex(QV.shape):
             # Compute the maximum expected value over all possible actions
             q = QV[state, action]
 
