@@ -140,11 +140,12 @@ def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes, sa
         ns_env = make_gym_env(p, map)
         ns_env.reset()
 
+        X = get_sample(ns_env, map_size)
+
         if visualize:
             visualize_frozen_lake_rectangles(map)
-            visualize_value_map(ns_env, map_size)
+            visualize_value_map(X, map_size)
 
-        X = get_sample(ns_env, map_size)
         X = X.reshape(map_size, map_size, ns_env.action_space.n)
         X = np.transpose(X, axes=[2, 0, 1])
 

@@ -6,13 +6,12 @@ import matplotlib.patches as patches
 from matplotlib.patches import Rectangle
 
 
-def visualize_value_map(env, map_size):
+def visualize_value_map(QV, map_size):
     """
     Visualize the Q-values for each state in a grid environment.
     Each square contains four triangles representing the Q-values
     for the possible actions in that state.
     """
-    policy, QV = q_value_iteration(env)
     fig, ax = plt.subplots(figsize=(10, 10))
 
     # Loop over the grid to plot Q-values
@@ -22,7 +21,6 @@ def visualize_value_map(env, map_size):
             q_values = QV[row * map_size + col]
 
             # Normalize the Q-values for better visualization (optional)
-            print(q_values)
 
             # Define the coordinates of the square
             x, y = col, row
@@ -153,9 +151,3 @@ def visualize_frozen_lake_rectangles(map_layout):
     ax.set_ylim(0, rows)
 
     plt.show()
-
-
-if __name__ == "__main__":
-    import gymnasium as gym
-    env = gym.make('FrozenLake-v1')
-    visualize_value_map(env)
