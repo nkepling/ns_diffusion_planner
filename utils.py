@@ -5,12 +5,13 @@ import yaml
 
 
 class ValueMapData(Dataset):
-    def __init__(self, data_dir) -> None:
+    def __init__(self, data_dir,ids) -> None:
         """
         Initializes the dataset by listing all .npz files in the data directory.
 
         Args:
             data_dir (str): Path to the directory containing .npz files.
+            ids: List of indices to load for train test split
         """
         self.data_dir = data_dir
         self.file_list = [f for f in os.listdir(

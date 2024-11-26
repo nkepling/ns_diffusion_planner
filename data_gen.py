@@ -84,6 +84,8 @@ def make_gym_env(p, map):
 def get_sample(ns_env, map_size, gamma=0.9, theta=1e-6):
     """Compute q-value map"""
     policy, QV = q_value_iteration(ns_env, gamma=gamma, theta=theta)
+
+    print(QV.shape)
     return QV
 
 
@@ -170,6 +172,6 @@ if __name__ == "__main__":
 
     generate_data(1, 20, 1000, 10, 4, 4, save_path=save_path,
                   meta_data_logger=meta_data_logger,
-                  meta_data_path=meta_data_path)
+                  meta_data_path=meta_data_path,visualize=True)
 
     print("Data generation complete")

@@ -3,17 +3,31 @@ from utils import ValueMapData, parse_config
 from torch.utils.data import DataLoader
 from diffusion import DiffusionModel
 
-def train():
+def train(config, model, optimizer, train_loader, val_loader, device):
     """Train Diffusion Model.
     TODO:
     """
 
+    model.train()
+
+    for epoch in range(config.num_epochs):
+
+
+        for i,data in train_loader:
+            x = x.to(device)
+
+            t = torch.randint(0, config.num_timesteps, (config.batch_size,)).to(device)
+
+            
+
+
+
+
+
+
 
 def main(config):
-
-
     # Set device:
-
     if torch.cuda.is_available():
         device = torch.device('cuda')
     elif torch.backends.mps.is_available():
@@ -21,35 +35,25 @@ def main(config):
     else:
         device = torch.device('cpu')
 
-
+    # Init model 
     model = DiffusionModel()
+    model.to(device)
+
     optimizer = torch.optim.Adam(model.parameters(), lr=config['training']['lr'])
 
-    train()
 
+    # Load data
+    train_indices = list(range(0, 1000)) # TODO change this to the actual number of files
 
+    train_data = ValueMapData(config.data_dir,train_indices)
+    train_loader = DataLoader(train_data, batch_size=config.batch_size, num_workers=config.num_workers, shuffle=True)
 
+    val_indices = list(range(1000, 1100)) # TODO change this to the actual number of files
+    val_data = ValueMapData(config.data_dir, val_indices)
+    val_loader = DataLoader(val_data, batch_size=config.batch_size, num_workers=config.num_workers, shuffle=False)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # Train model
+    train(config, model, optimizer, train_loader, val_loader, device)
 
 
 

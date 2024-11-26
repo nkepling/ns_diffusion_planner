@@ -22,7 +22,7 @@ def visualize_value_map(env, map_size):
             q_values = QV[row * map_size + col]
 
             # Normalize the Q-values for better visualization (optional)
-            print(q_values)
+
 
             # Define the coordinates of the square
             x, y = col, row
