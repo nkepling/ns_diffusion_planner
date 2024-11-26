@@ -46,7 +46,9 @@ class DiffusionModel(nn.Module):
     def preturb_data(self, X, t):
         """
         Forward diffusion: image -> noise
-        t = 1 dimensional tensor applied to entire batch.
+        t is a 1-dimensional scalar.
+        Entire batch recieves same noise.
+        applied to entire batch.
 
         Add noise to the image to get the noise sample
         """
@@ -54,6 +56,19 @@ class DiffusionModel(nn.Module):
         W = torch.randn_like(X, device=X.device)
 
         Xw = X * (1-t) + W * (t)
+
+        return Xw
+
+    def preturb_data_step(self, X):
+        """
+        Incremental Forward diffusion: image -> image+noise
+        """
+
+        dt = 1 / self.total_steps
+
+        W = torch.randn_like(X, device=X.device)
+
+        Xw = X * (1-dt) + W * (dt)
 
         return Xw
 
