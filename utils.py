@@ -17,7 +17,7 @@ class ValueMapData(Dataset):
             data_dir) if f.endswith('.pt')]
         if not self.file_list:
             raise ValueError(
-                f"No .tp files found in the directory: {data_dir}")
+                f"No .pt files found in the directory: {data_dir}")
 
     def __getitem__(self, index):
         """

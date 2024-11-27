@@ -27,7 +27,7 @@ class DiffusionModel(nn.Module):
 
         # get unit vectors
         V = torch.randn(S.shape)
-        V = V / torch.norm(V, dim=1)[:, None]
+        V = V / (torch.norm(V, dim=1)[:, None] + 1e-12)
 
         VS = torch.sum(V * S, axis=1)
         rhs = .5 * VS ** 2

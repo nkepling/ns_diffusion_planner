@@ -8,13 +8,15 @@ from unet import UNet
 
 def train(model, optimizer, data, epochs):
     for ep in range(epochs):
+        if ep % 100 == 0:
+            torch.save(model.state_dict(), f'checkpoints/model_epoch_{ep}.pt')
         i = 1
         for X in data:
             X.to(model.device)
             # Sample random times t.
             # These times t are applied to each map in the batch
             t = model.ts[torch.randint(0, len(model.ts), (X.shape[0],))]
-
+            t.to(model.device)
             # calculate divergence and take step
             F_divergence = model.sliced_score_matching(X, t)
             optimizer.zero_grad()
@@ -49,8 +51,9 @@ def main(config):
         model.parameters(), lr=lr)
 
     data = ValueMapData(data_dir)
-    data_loader = DataLoader(data, batch_size=batch_size)
-
+    data_loader = DataLoader(data, batch_size=batch_size, pin_memory=True)
+    
+    os.makedirs('checkpoints/', exist_ok=True)
     train(model, optimizer, data_loader, epochs)
 
     os.makedirs('models/', exist_ok=True)
