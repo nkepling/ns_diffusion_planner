@@ -53,6 +53,8 @@ def main(config):
 
     train(model, optimizer, data_loader, epochs)
 
+    torch.save(model.state_dict())
+
 
 if __name__ == "__main__":
     import argparse
