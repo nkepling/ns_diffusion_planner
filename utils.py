@@ -32,7 +32,7 @@ class ValueMapData(Dataset):
         """
         file_path = os.path.join(self.data_dir, self.file_list[index])
 
-        X = torch.load(file_path)
+        X = torch.load(file_path,weights_only=True)
 
         return X
 

@@ -4,19 +4,39 @@ from utils import ValueMapData, parse_config
 from torch.utils.data import DataLoader
 from diffusion import DiffusionModel
 from unet import UNet
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+elif torch.backends.mps.is_available():
+    device = torch.device('mps')
+else:
+    device = torch.device('cpu')
+
+def plot_loss(loss_log):
+    os.makedirs('plots/', exist_ok=True)
+    plt.plot(loss_log)
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.savefig('plots/loss.png')
 
 
 def train(model, optimizer, data, epochs):
+    loss_log = []
     for ep in range(epochs):
         if ep % 100 == 0:
             torch.save(model.state_dict(), f'checkpoints/model_epoch_{ep}.pt')
         i = 1
+        epoch_loss = []
         for X in data:
-            X.to(model.device)
+            X = X.to(torch.float32).to(device)
+            # assert X.device == model.device,f"got {X.device} expected {model.device}"
             # Sample random times t.
             # These times t are applied to each map in the batch
-            t = model.ts[torch.randint(0, len(model.ts), (X.shape[0],))]
-            t.to(model.device)
+            t = model.ts[torch.randint(0, len(model.ts), (X.shape[0],))].to(device)
             # calculate divergence and take step
             F_divergence = model.sliced_score_matching(X, t)
             optimizer.zero_grad()
@@ -28,7 +48,11 @@ def train(model, optimizer, data, epochs):
                   f"t: {t[0].item(): .4f}    ",
                   f"loss: {F_divergence.item(): .4f}    ")
             i += 1
+            epoch_loss.append(F_divergence.item())
+        
+        loss_log.append(np.mean(epoch_loss))    
 
+    return loss_log
 
 def main(config):
     lr = config['lr']
@@ -36,16 +60,13 @@ def main(config):
     epochs = config['epochs']
     batch_size = config['batch_size']
 
-    if torch.cuda.is_available():
-        device = torch.device('cuda')
-    elif torch.backends.mps.is_available():
-        device = torch.device('mps')
-    else:
-        device = torch.device('cpu')
+
 
     model = DiffusionModel(UNet(), device)
     model.to(device)
-    model.double()
+
+    # print(model.device)
+    # model.double()
 
     optimizer = torch.optim.Adam(
         model.parameters(), lr=lr)
@@ -54,10 +75,15 @@ def main(config):
     data_loader = DataLoader(data, batch_size=batch_size, pin_memory=True)
     
     os.makedirs('checkpoints/', exist_ok=True)
-    train(model, optimizer, data_loader, epochs)
+    loss_log = train(model, optimizer, data_loader, epochs)
+
+    plot_loss(loss_log)
 
     os.makedirs('models/', exist_ok=True)
     torch.save(model.state_dict(), 'models/model1.pt')
+
+
+
 
 
 if __name__ == "__main__":

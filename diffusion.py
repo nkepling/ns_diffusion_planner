@@ -9,13 +9,16 @@ class DiffusionModel(nn.Module):
         self.sample_steps_cache = None
 
         self.device = device
-        self.ts = torch.linspace(0, 1, T)
+
+        self.score_model.to(device)
+        self.ts = torch.linspace(0, 1, T).to(device)
         self.T = T
 
     def forward(self, XT, t):
         """Predict the score at time t for the a noisy input XT
         """
         t = self.time_embedding(t)
+        t = t.to(self.device)
         return self.score_model(XT, t)
 
     def sliced_score_matching(self, X, t):
@@ -26,7 +29,7 @@ class DiffusionModel(nn.Module):
         S = self(X, t).flatten(start_dim=1)
 
         # get unit vectors
-        V = torch.randn(S.shape)
+        V = torch.randn(S.shape).to(self.device)
         V = V / (torch.norm(V, dim=1)[:, None] + 1e-12)
 
         VS = torch.sum(V * S, axis=1)
