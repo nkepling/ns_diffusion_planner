@@ -1,4 +1,5 @@
 import torch
+import os
 from utils import ValueMapData, parse_config
 from torch.utils.data import DataLoader
 from diffusion import DiffusionModel
@@ -52,7 +53,8 @@ def main(config):
 
     train(model, optimizer, data_loader, epochs)
 
-    torch.save(model.state_dict())
+    os.makedirs('models/', exist_ok=True)
+    torch.save('models/model1.pt', model.state_dict())
 
 
 if __name__ == "__main__":

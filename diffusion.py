@@ -44,7 +44,7 @@ class DiffusionModel(nn.Module):
     def time_embedding(self, t):
         """Maybe embed the time vector here?
            We can keep it linear for now, since it will be limited [0,1]
-           Time embedding is done in the unet architecture 
+           Time embedding is done in the unet architecture
            as a gaussian fourier projection
         """
         return t
