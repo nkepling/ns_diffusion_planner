@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 
-###### UNet Model ######
-# I refrence this implementation from the following link: https://github.com/milesial/Pytorch-UNet/tree/master
+# UNet Model #
+# I refrence this implementation from the following link:
+# https://github.com/milesial/Pytorch-UNet/tree/master
 
 
 # TODO: append time vector to input...
@@ -11,7 +12,8 @@ class GaussianFourierProjection(nn.Module):
 
     def __init__(self, embed_dim, scale=30.):
         super().__init__()
-        # Randomly sample weights during initialization. These weights are fixed
+        # Randomly sample weights during initialization.
+        # These weights are fixed
         # during optimization and are not trainable.
         self.W = nn.Parameter(torch.randn(embed_dim // 2)
                               * scale, requires_grad=False)
@@ -78,7 +80,6 @@ class Up(nn.Module):
     def __init__(self, in_channels, out_channels) -> None:
         super(Up, self).__init__()
         self.up = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=3)
-        # self.up = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2)
 
     def forward(self, x):
         return self.up(x)

@@ -7,10 +7,10 @@ import yaml
 class ValueMapData(Dataset):
     def __init__(self, data_dir) -> None:
         """
-        Initializes the dataset by listing all .npz files in the data directory.
+        Initializes the dataset by listing all .pt files in the data directory.
 
         Args:
-            data_dir (str): Path to the directory containing .npz files.
+            data_dir (str): Path to the directory containing .pt files.
         """
         self.data_dir = data_dir
         self.file_list = [f for f in os.listdir(
@@ -21,13 +21,14 @@ class ValueMapData(Dataset):
 
     def __getitem__(self, index):
         """
-        Reads and decompresses an .npz file by index.
+        Reads and decompresses an .pt file by index.
 
         Args:
             index (int): Index of the file to read.
 
         Returns:
-            tuple: A tuple containing input data and target value loaded from the .pt file.
+            tuple: A tuple containing input data and
+                   target value loaded from the .pt file.
         """
         file_path = os.path.join(self.data_dir, self.file_list[index])
 
@@ -37,7 +38,7 @@ class ValueMapData(Dataset):
 
     def __len__(self):
         """
-        Returns the number of .npz files in the dataset.
+        Returns the number of .pt files in the dataset.
 
         Returns:
             int: Number of files.

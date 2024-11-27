@@ -2,17 +2,37 @@ import torch
 from utils import ValueMapData, parse_config
 from torch.utils.data import DataLoader
 from diffusion import DiffusionModel
+from unet import UNet
 
-def train():
-    """Train Diffusion Model.
-    TODO:
-    """
+
+def train(model, optimizer, data, epochs):
+    for ep in range(epochs):
+        i = 1
+        for X in data:
+            X.to(model.device)
+            # Sample a random time t.
+            # This time t is applied to entire batch
+            t = model.ts[torch.randint(0, len(model.ts), (1,))]
+            t = t.repeat(X.shape[0])
+
+            # calculate divergence and take step
+            F_divergence = model.sliced_score_matching(X, t)
+            optimizer.zero_grad()
+            F_divergence.backward()
+            optimizer.step()
+
+            print(f"epoch: {ep: 0{4}d}   ",
+                  f"batch: {i: 0{4}d}    ",
+                  f"t: {t[0].item(): .4f}    ",
+                  f"loss: {F_divergence.item(): .4f}    ")
+            i += 1
 
 
 def main(config):
-
-
-    # Set device:
+    lr = config['lr']
+    data_dir = config['data_dir']
+    epochs = config['epochs']
+    batch_size = config['batch_size']
 
     if torch.cuda.is_available():
         device = torch.device('cuda')
@@ -21,53 +41,39 @@ def main(config):
     else:
         device = torch.device('cpu')
 
+    model = DiffusionModel(UNet(), device)
+    model.to(device)
+    model.double()
 
-    model = DiffusionModel()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config['training']['lr'])
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=lr)
 
-    train()
+    data = ValueMapData(data_dir)
+    data_loader = DataLoader(data, batch_size=batch_size)
 
-
-
-
-
-
-
-
+    train(model, optimizer, data_loader, epochs)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-if __name__== "__main__":
+if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Train a diffusion model.')
-    parser.add_argument('--config', type=str, required=True,help='Path to the config file.')
+    parser.add_argument('--config', type=str, required=True,
+                        help='Path to the config file.')
 
     # Command line args to overwrite config
 
     # Training args
-    parser.add_argument('--batch_size', type=int, help='Batch size for training.')
-    parser.add_argument('--epochs', type=int, help='Number of epochs for training.')
+    parser.add_argument('--batch_size', type=int,
+                        help='Batch size for training.')
+    parser.add_argument('--epochs', type=int,
+                        help='Number of epochs for training.')
     parser.add_argument('--lr', type=float, help='Learning rate for training.')
 
     # Data args
-    parser.add_argument('--train_data_dir', type=str, help='Path to the directory containing .npz files.')
-    parser.add_argument('--num_workers', type=int, help='Number of workers for data loading.')
+    parser.add_argument('--train_data_dir', type=str,
+                        help='Path to the directory containing .npz files.')
+    parser.add_argument('--num_workers', type=int,
+                        help='Number of workers for data loading.')
 
     # Model args
 
@@ -77,11 +83,11 @@ if __name__== "__main__":
     config = parse_config(args.config)
 
     if args.epochs is not None:
-        config['training']['epochs'] = args.epochs
+        config['epochs'] = args.epochs
     if args.batch_size is not None:
-        config['training']['batch_size'] = args.batch_size
-    if args.learning_rate is not None:
-        config['training']['lr'] = args.lr
+        config['batch_size'] = args.batch_size
+    if args.lr is not None:
+        config['lr'] = args.lr
 
     print("Config:")
     print(config)
