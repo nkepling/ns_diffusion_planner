@@ -10,10 +10,9 @@ def train(model, optimizer, data, epochs):
         i = 1
         for X in data:
             X.to(model.device)
-            # Sample a random time t.
-            # This time t is applied to entire batch
-            t = model.ts[torch.randint(0, len(model.ts), (1,))]
-            t = t.repeat(X.shape[0])
+            # Sample random times t.
+            # These times t are applied to each map in the batch
+            t = model.ts[torch.randint(0, len(model.ts), (X.shape[0],))]
 
             # calculate divergence and take step
             F_divergence = model.sliced_score_matching(X, t)
