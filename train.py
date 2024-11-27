@@ -54,7 +54,7 @@ def main(config):
     train(model, optimizer, data_loader, epochs)
 
     os.makedirs('models/', exist_ok=True)
-    torch.save('models/model1.pt', model.state_dict())
+    torch.save(model.state_dict(), 'models/model1.pt')
 
 
 if __name__ == "__main__":
