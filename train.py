@@ -52,6 +52,9 @@ def train(model, optimizer, data, epochs):
             epoch_loss.append(F_divergence.item())
 
         loss_log.append(np.mean(epoch_loss))
+        if np.mean(epoch_loss[-1000:]) == 0:
+            print('early termination')
+            break
 
     return loss_log
 
