@@ -47,7 +47,6 @@ def train(model, optimizer, data, epochs):
 
             print(f"epoch: {ep: 0{4}d}   ",
                   f"batch: {i: 0{4}d}    ",
-                  f"t: {t[0].item(): .4f}    ",
                   f"loss: {F_divergence.item(): .4f}    ")
             i += 1
             epoch_loss.append(F_divergence.item())
