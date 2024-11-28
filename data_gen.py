@@ -119,48 +119,96 @@ class MetaData:
 
 
 def process_map(id, seed, p, map_size, max_steps, max_holes, min_holes, save_path):
+    # Generate a new map with the given parameters
     map, seed = generate_new_map(
         map_size, max_steps, max_holes, min_holes, seed)
+
+    # Initialize the environment with the generated map
     ns_env = make_gym_env(p, map)
     ns_env.reset()
+
+    # Collect and process samples from the environment
     X = get_sample(ns_env, map_size)
     X = X.reshape(map_size, map_size, ns_env.action_space.n)
     X = np.transpose(X, axes=[2, 0, 1])
     X = torch.tensor(X)
+
+    # Save the processed data to a file
     save_file = f"{save_path}_{id}.pt"
     torch.save(X, save_file)
+
+    # Return metadata for logging
     return id, seed, save_file
 
 
 def generate_data_parallel(p, num_maps, max_steps, map_size,
                            max_holes, min_holes, save_path, meta_data_logger,
-                           meta_data_path, num_workers, start_seed=None):
-    if start_seed is not None:
-        seed = start_seed
-    else:
-        seed = 0
+                           meta_data_path, num_workers, start_seed=None, max_in_flight=1000):
+    # Initialize the starting seed
+    seed = start_seed if start_seed is not None else 0
 
-    total_number_of_maps = np.sum([math.factorial(map_size**2)/(math.factorial(
-        map_size**2-i)*math.factorial(i)) for i in range(min_holes, max_holes+1)])
-
+    # Calculate the total number of possible maps
+    total_number_of_maps = np.sum([
+        math.comb(map_size**2, i) for i in range(min_holes, max_holes + 1)
+    ])
     print(f"Total number of possible maps: {total_number_of_maps}")
 
+    # Set the number of maps to generate if not specified
     if num_maps is None:
-        num_maps = round(total_number_of_maps)
+        num_maps = int(total_number_of_maps)
+
+    completed = 0  # Counter for completed tasks
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
-        futures = []
-        for id in range(num_maps):
-            futures.append(executor.submit(
-                process_map, id, seed + id, p, map_size, max_steps, max_holes, min_holes, save_path
-            ))
+        future_to_id = {}
+        id_iter = iter(range(num_maps))
+        in_flight = 0
 
-        for future in concurrent.futures.as_completed(futures):
-            id, seed, save_file = future.result()
-            meta_data_logger.store_metadata(id, seed)
-            if id % 100 == 0:
-                print(f"Generated {id} samples")
-                meta_data_logger.save_metadata(meta_data_path)
+        # Submit initial batch of tasks
+        for _ in range(min(max_in_flight, num_maps)):
+            id = next(id_iter)
+            future = executor.submit(
+                process_map, id, seed + id, p, map_size, max_steps,
+                max_holes, min_holes, save_path
+            )
+            future_to_id[future] = id
+            in_flight += 1
+
+        while future_to_id:
+            # As futures complete, submit new tasks
+            for future in concurrent.futures.as_completed(future_to_id):
+                id = future_to_id.pop(future)
+                in_flight -= 1
+                try:
+                    id_result, seed_result, save_file = future.result()
+                    # Log metadata safely in the main process
+                    meta_data_logger.store_metadata(id_result, seed_result)
+                    completed += 1  # Increment completed counter
+
+                    # Save metadata periodically
+                    if completed % 100 == 0:
+                        print(f"Generated {completed}/{num_maps} samples")
+                        meta_data_logger.save_metadata(meta_data_path)
+                except Exception as e:
+                    print(f"Error processing map {id}: {e}")
+
+                # Submit new task if any are left
+                try:
+                    next_id = next(id_iter)
+                    future = executor.submit(
+                        process_map, next_id, seed + next_id, p, map_size,
+                        max_steps, max_holes, min_holes, save_path
+                    )
+                    future_to_id[future] = next_id
+                    in_flight += 1
+                except StopIteration:
+                    pass  # No more tasks to submit
+
+                if in_flight == 0:
+                    break  # All tasks have been completed
+
+        # Save any remaining metadata after all tasks are completed
+        meta_data_logger.save_metadata(meta_data_path)
 
 
 def generate_data(p, num_maps, max_steps, map_size,
