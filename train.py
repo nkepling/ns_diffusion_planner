@@ -27,7 +27,7 @@ def plot_loss(loss_log):
 def train(model, optimizer, data, epochs):
     loss_log = []
     for ep in range(epochs):
-        if ep % 100 == 0:
+        if ep % 10 == 0:
             torch.save(model.state_dict(), f'checkpoints/model_epoch_{ep}.pt')
         i = 1
         epoch_loss = []
@@ -40,6 +40,7 @@ def train(model, optimizer, data, epochs):
                 0, len(model.ts), (X.shape[0],))].to(device)
             # calculate divergence and take step
             F_divergence = model.sliced_score_matching(X, t)
+            F_divergence = torch.neg(F_divergence)
             optimizer.zero_grad()
             F_divergence.backward()
             optimizer.step()

@@ -117,6 +117,9 @@ class MetaData:
             writer.writerows([dict(zip(self.meta_data_dict, t))
                              for t in zip(*self.meta_data_dict.values())])
 
+            # Empty dictionary
+            self.meta_data_dict.clear()
+
 
 def process_map(id, seed, p, map_size, max_steps, max_holes, min_holes, save_path):
     # Generate a new map with the given parameters
