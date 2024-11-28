@@ -8,3 +8,6 @@ min_holes: 4
 
 save_path: "data/p1/p1"
 meta_data_path: "data/p1_metadata.csv"
+
+parallel: True
+num_workers: 32

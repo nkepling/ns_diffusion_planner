@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import gymnasium as gym
+import concurrent.futures
 from value_iteration import q_value_iteration
 import ns_gym
 from visualize import visualize_value_map, visualize_frozen_lake_rectangles
@@ -117,6 +118,51 @@ class MetaData:
                              for t in zip(*self.meta_data_dict.values())])
 
 
+def process_map(id, seed, p, map_size, max_steps, max_holes, min_holes, save_path):
+    map, seed = generate_new_map(
+        map_size, max_steps, max_holes, min_holes, seed)
+    ns_env = make_gym_env(p, map)
+    ns_env.reset()
+    X = get_sample(ns_env, map_size)
+    X = X.reshape(map_size, map_size, ns_env.action_space.n)
+    X = np.transpose(X, axes=[2, 0, 1])
+    X = torch.tensor(X)
+    save_file = f"{save_path}_{id}.pt"
+    torch.save(X, save_file)
+    return id, seed, save_file
+
+
+def generate_data_parallel(p, num_maps, max_steps, map_size,
+                           max_holes, min_holes, save_path, meta_data_logger,
+                           meta_data_path, num_workers, start_seed=None):
+    if start_seed is not None:
+        seed = start_seed
+    else:
+        seed = 0
+
+    total_number_of_maps = np.sum([math.factorial(map_size**2)/(math.factorial(
+        map_size**2-i)*math.factorial(i)) for i in range(min_holes, max_holes+1)])
+
+    print(f"Total number of possible maps: {total_number_of_maps}")
+
+    if num_maps is None:
+        num_maps = round(total_number_of_maps)
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+        futures = []
+        for id in range(num_maps):
+            futures.append(executor.submit(
+                process_map, id, seed + id, p, map_size, max_steps, max_holes, min_holes, save_path
+            ))
+
+        for future in concurrent.futures.as_completed(futures):
+            id, seed, save_file = future.result()
+            meta_data_logger.store_metadata(id, seed)
+            if id % 100 == 0:
+                print(f"Generated {id} samples")
+                meta_data_logger.save_metadata(meta_data_path)
+
+
 def generate_data(p, num_maps, max_steps, map_size,
                   max_holes, min_holes,
                   save_path, meta_data_logger, meta_data_path,
@@ -187,13 +233,21 @@ if __name__ == "__main__":
 
     save_path = config['save_path']
     meta_data_path = config['meta_data_path']
+    num_workers = config['num_workers']
+
+    parallel = config['parallel']
 
     meta_data_logger = MetaData()
 
-    generate_data(p, num_maps, max_steps,
-                  map_size, max_holes, min_holes,
-                  save_path=save_path,
-                  meta_data_logger=meta_data_logger,
-                  meta_data_path=meta_data_path)
+    if parallel:
+        generate_data_parallel(p, num_maps, max_steps,
+                               map_size, max_holes, min_holes,
+                               save_path=save_path,
+                               meta_data_logger=meta_data_logger,
+                               meta_data_path=meta_data_path,
+                               num_workers=num_workers)
+    else:
+        generate_data(p, num_maps, max_steps, map_size, max_holes,
+                      min_holes, save_path, meta_data_logger, meta_data_path)
 
     print("Data generation complete")
