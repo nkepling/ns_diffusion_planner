@@ -4,7 +4,6 @@ import gymnasium as gym
 from value_iteration import q_value_iteration
 import ns_gym
 from visualize import visualize_value_map, visualize_frozen_lake_rectangles
-import pandas as pd
 from collections import defaultdict
 import csv
 import os
@@ -118,7 +117,10 @@ class MetaData:
                              for t in zip(*self.meta_data_dict.values())])
 
 
-def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes, save_path, meta_data_logger, meta_data_path, visualize=False, start_seed=None):
+def generate_data(p, num_maps, max_steps, map_size,
+                  max_holes, min_holes,
+                  save_path, meta_data_logger, meta_data_path,
+                  visualize=False, start_seed=None):
     """Generate data for the FrozenLake environment.
     """
     total_number_of_maps = np.sum([math.factorial(map_size**2)/(math.factorial(
@@ -126,12 +128,15 @@ def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes, sa
 
     print(f"Total number of possible maps: {total_number_of_maps}")
 
+    if num_maps is None:
+        num_maps = round(total_number_of_maps)
+
     if start_seed is not None:
         seed = start_seed
     else:
         seed = 0
 
-    for id in range(num_episodes):
+    for id in range(num_maps):
         map, seed = generate_new_map(
             map_size, max_steps, max_holes, min_holes, seed)
 
@@ -160,16 +165,34 @@ def generate_data(p, num_episodes, max_steps, map_size, max_holes, min_holes, sa
         seed += 1
 
     meta_data_logger.save_metadata(meta_data_path)
-    print(f"Generated {num_episodes} samples")
+    print(f"Generated {num_maps} samples")
 
 
 if __name__ == "__main__":
-    save_path = "data/p1/p1"
-    meta_data_path = "data/p1_metadata.csv"
+    import argparse
+    from utils import parse_config
+    parser = argparse.ArgumentParser(description='Generate Q-value map data.')
+    parser.add_argument('--config', type=str, required=True,
+                        help='Path to the config file.')
+    args = parser.parse_args()
+    config = parse_config(args.config)
+
+    p = config['p']
+    num_maps = config['num_maps']
+    max_steps = config['max_steps']
+
+    map_size = config['map_size']
+    max_holes = config['max_holes']
+    min_holes = config['min_holes']
+
+    save_path = config['save_path']
+    meta_data_path = config['meta_data_path']
 
     meta_data_logger = MetaData()
 
-    generate_data(1, 20, 1000, 10, 4, 4, save_path=save_path,
+    generate_data(p, num_maps, max_steps,
+                  map_size, max_holes, min_holes,
+                  save_path=save_path,
                   meta_data_logger=meta_data_logger,
                   meta_data_path=meta_data_path)
 

@@ -17,8 +17,6 @@ class GaussianFourierProjection(nn.Module):
         # during optimization and are not trainable.
         self.W = nn.Parameter(torch.randn(embed_dim // 2)
                               * scale, requires_grad=False)
-        
-
 
     def forward(self, x):
         x_proj = x[:, None] * self.W[None, :] * 2 * torch.pi
@@ -91,7 +89,7 @@ class Down(nn.Module):
     def __init__(self) -> None:
         super(Down, self).__init__()
         # self.down = nn.MaxPool2d(kernel_size=3, stride=1,return_indices=True)
-        self.down  = nn.AvgPool2d(kernel_size=3,stride=1)
+        self.down = nn.AvgPool2d(kernel_size=3, stride=1)
         # self.down = nn.MaxPool2d(kernel_size=2,stride=2)
 
     def forward(self, x):

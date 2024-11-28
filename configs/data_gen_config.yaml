@@ -1,0 +1,10 @@
+p: 1
+num_maps: null # null means all possible configurations 
+max_steps: 1000
+
+map_size: 10
+max_holes: 4
+min_holes: 4
+
+save_path: "data/p1/p1"
+meta_data_path: "data/p1_metadata.csv"

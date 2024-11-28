@@ -8,13 +8,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-
 if torch.cuda.is_available():
     device = torch.device('cuda')
 elif torch.backends.mps.is_available():
     device = torch.device('mps')
 else:
     device = torch.device('cpu')
+
 
 def plot_loss(loss_log):
     os.makedirs('plots/', exist_ok=True)
@@ -36,7 +36,8 @@ def train(model, optimizer, data, epochs):
             # assert X.device == model.device,f"got {X.device} expected {model.device}"
             # Sample random times t.
             # These times t are applied to each map in the batch
-            t = model.ts[torch.randint(0, len(model.ts), (X.shape[0],))].to(device)
+            t = model.ts[torch.randint(
+                0, len(model.ts), (X.shape[0],))].to(device)
             # calculate divergence and take step
             F_divergence = model.sliced_score_matching(X, t)
             optimizer.zero_grad()
@@ -49,18 +50,17 @@ def train(model, optimizer, data, epochs):
                   f"loss: {F_divergence.item(): .4f}    ")
             i += 1
             epoch_loss.append(F_divergence.item())
-        
-        loss_log.append(np.mean(epoch_loss))    
+
+        loss_log.append(np.mean(epoch_loss))
 
     return loss_log
+
 
 def main(config):
     lr = config['lr']
     data_dir = config['data_dir']
     epochs = config['epochs']
     batch_size = config['batch_size']
-
-
 
     model = DiffusionModel(UNet(), device)
     model.to(device)
@@ -73,7 +73,7 @@ def main(config):
 
     data = ValueMapData(data_dir)
     data_loader = DataLoader(data, batch_size=batch_size, pin_memory=True)
-    
+
     os.makedirs('checkpoints/', exist_ok=True)
     loss_log = train(model, optimizer, data_loader, epochs)
 
@@ -81,9 +81,6 @@ def main(config):
 
     os.makedirs('models/', exist_ok=True)
     torch.save(model.state_dict(), 'models/model1.pt')
-
-
-
 
 
 if __name__ == "__main__":
@@ -123,5 +120,6 @@ if __name__ == "__main__":
 
     print("Config:")
     print(config)
+    print("device:", device)
 
     main(config)
