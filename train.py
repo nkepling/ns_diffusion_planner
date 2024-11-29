@@ -51,7 +51,7 @@ def train(model, optimizer, data, epochs):
 
         loss_log.append(np.mean(epoch_loss))
         torch.save(model.state_dict(), f'checkpoints/model_epoch_{ep}.pt')
-        if np.mean(epoch_loss[-1000:]) == 0:
+        if np.mean(epoch_loss) < 1e-6:
             print('early termination')
             break
 
