@@ -7,11 +7,10 @@ class DiffusionModel(nn.Module):
     def __init__(self, score_model, device, T=1000) -> None:
         super(DiffusionModel, self).__init__()
         self.score_model = score_model
-        self.sample_steps_cache = None
 
         self.device = device
-
         self.score_model.to(device)
+
         self.ts = torch.linspace(0, 1, T).to(device)
         self.T = T
 
@@ -89,7 +88,6 @@ class DiffusionSampler(nn.Module):
         self.model = model
         self.ts = compute_sample_steps(num_steps)
         self.tau = 1 / num_steps
-
 
     def forward(self, shape, weights=None):
         """
