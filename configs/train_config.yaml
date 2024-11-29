@@ -2,3 +2,4 @@ epochs: 100
 batch_size: 512
 lr: 0.001 # learning rate
 data_dir: "data/p1/"
+checkpoint: null

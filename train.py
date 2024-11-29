@@ -27,8 +27,6 @@ def plot_loss(loss_log):
 def train(model, optimizer, data, epochs):
     loss_log = []
     for ep in range(epochs):
-        if ep % 10 == 0:
-            torch.save(model.state_dict(), f'checkpoints/model_epoch_{ep}.pt')
         i = 1
         epoch_loss = []
         for X in data:
@@ -52,6 +50,7 @@ def train(model, optimizer, data, epochs):
             epoch_loss.append(F_divergence.item())
 
         loss_log.append(np.mean(epoch_loss))
+        torch.save(model.state_dict(), f'checkpoints/model_epoch_{ep}.pt')
         if np.mean(epoch_loss[-1000:]) == 0:
             print('early termination')
             break
@@ -65,7 +64,11 @@ def main(config):
     epochs = config['epochs']
     batch_size = config['batch_size']
 
-    model = DiffusionModel(UNet(), device)
+    unet = UNet()
+    if config['checkpoint'] is not None:
+        unet.load_state_dict(torch.load(
+            config['checkpoint'], weights_only=True))
+    model = DiffusionModel(unet, device)
     model.to(device)
 
     # print(model.device)
@@ -106,6 +109,8 @@ if __name__ == "__main__":
                         help='Path to the directory containing .npz files.')
     parser.add_argument('--num_workers', type=int,
                         help='Number of workers for data loading.')
+    parser.add_argument('--checkpoint', type=int,
+                        help='checkpoint.')
 
     # Model args
 
@@ -120,6 +125,7 @@ if __name__ == "__main__":
         config['batch_size'] = args.batch_size
     if args.lr is not None:
         config['lr'] = args.lr
+    config['checkpoint'] = args.checkpoint
 
     print("Config:")
     print(config)

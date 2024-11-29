@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from numpy import sqrt
 
 
 class DiffusionModel(nn.Module):
@@ -81,51 +82,56 @@ class DiffusionModel(nn.Module):
 
         return Xw
 
-    def sample(self, num_steps, shape):
+
+class DiffusionSampler(nn.Module):
+    def __init__(self, model, num_steps) -> None:
+        super(DiffusionSampler, self).__init__()
+        self.model = model
+        self.ts = compute_sample_steps(num_steps)
+        self.tau = 1 / num_steps
+
+
+    def forward(self, shape, weights=None):
         """
         Reverse diffusion sampling: noise -> image
         Use Langevin Dynamics, start with noise and
         slowly change it with the score.
         """
 
-        # update self.sample_steps
-        if self.sample_steps_cache is None or len(self.sample_steps_cache) != num_steps:
-            self.compute_sample_steps(num_steps)
-
         # sample X_T (gaussian noise) and step size
         X = torch.randn(shape)
-        tau = 1 / num_steps
 
         # iteratively update X with Euler-Maruyama method
-        for t in self.sample_steps:
+        for t in reversed(self.ts):
+            t = torch.tensor([t])
             noise = torch.randn(shape)
-            score = self.score_model(X, t)
-            X = X + tau * score + torch.sqrt(2 * tau) * noise
+            score = self.model(X, t) if weights is None else self.model(X, t, weights)
+            X = X + self.tau * score + sqrt(2 * self.tau) * noise
 
         return X
 
-    def compute_sample_steps(self, num_steps):
-        """
-        This function distributes the requested number of sample steps
-        across our T discrete ts.
-        ### Example:
-        if num_steps == 20000
-        then sample steps takes two steps for each t
-        [0,0, 1e-10, 1e-10,...]
-        """
-        T = max(num_steps, self.T)
 
-        leftn = T % self.T
-        leftend = leftn / self.T
-        rep = T // self.T + 1  # plus one to round up
+def compute_sample_steps(num_steps):
+    """
+    This function distributes the requested number of sample steps
+    across our 1000 discrete ts.
+    ### Example:
+    if num_steps == 2000
+    then sample steps takes two steps for each t
+    [0,0, 1e-10, 1e-10,..., 1, 1]
+    """
+    T = max(num_steps, 1000)
 
-        left = torch.linspace(0, leftend, leftn)
-        left = left.repeat_interleave(rep)
+    leftn = T % 1000
+    leftend = leftn / 1000
+    rep = T // 1000 + 1  # plus one to round up
 
-        rightn = self.T - leftn
-        right = torch.linspace(leftend, 1, rightn)
-        right = right.repeat_interleave(rep-1)
+    left = torch.linspace(0, leftend, leftn)
+    left = left.repeat_interleave(rep)
 
-        # range is the
-        self.sample_steps_cache = left.tolist() + right.tolist()
-        return self.sample_steps_cache
+    rightn = 1000 - leftn
+    right = torch.linspace(leftend, 1, rightn)
+    right = right.repeat_interleave(rep-1)
+
+    # range is the
+    return left.tolist() + right.tolist()
