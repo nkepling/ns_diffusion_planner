@@ -15,21 +15,59 @@ elif torch.backends.mps.is_available():
 else:
     device = torch.device('cpu')
 
+def train_val_test_split(val_ratio, test_ratio, data_dir, shuffle=True):
+    """Splits the data into train, validation and test sets.
 
-def plot_loss(loss_log):
+    Returns: List of indices for train, validation and test sets.
+    """
+    file_list = [f for f in os.listdir(data_dir) if f.endswith('.pt')]
+    if not file_list:
+        raise ValueError(
+            f"No .pt files found in the directory: {data_dir}")
+    n = len(file_list)
+    if shuffle:
+        indices = np.random.permutation(n)
+    else:
+        indices = np.arange(n)
+    val_indices = indices[:int(n*val_ratio)]
+    test_indices = indices[int(n*val_ratio):int(n*(val_ratio+test_ratio))]
+    train_indices = indices[int(n*(val_ratio+test_ratio)):]
+
+    return train_indices, val_indices, test_indices
+
+
+def test(model, data):
+    model.eval()
+
+    loss = []
+
+    for X in data:
+        X = X.to(torch.float32).to(device)
+        t = model.ts[torch.randint(
+            0, len(model.ts), (X.shape[0],))].to(device)
+        F_divergence = model.sliced_score_matching(X, t)
+        F_divergence = torch.neg(F_divergence)
+        loss.append(F_divergence.item())
+
+    return np.mean(loss)
+
+def plot_loss(loss_log,title='Loss'):
     os.makedirs('plots/', exist_ok=True)
     plt.plot(loss_log)
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
-    plt.savefig('plots/loss.png')
+    plt.savefig('plots/' + f"{title}.png")
 
 
-def train(model, optimizer, data, epochs):
+def train(model, optimizer, train_data, val_data, epochs):
     loss_log = []
+    val_loss_log = []
+    model.train()
+
     for ep in range(epochs):
         i = 1
         epoch_loss = []
-        for X in data:
+        for X in train_data:
             X = X.to(torch.float32).to(device)
             # assert X.device == model.device,f"got {X.device} expected {model.device}"
             # Sample random times t.
@@ -43,19 +81,36 @@ def train(model, optimizer, data, epochs):
             F_divergence.backward()
             optimizer.step()
 
-            print(f"epoch: {ep: 0{4}d}   ",
-                  f"batch: {i: 0{4}d}    ",
-                  f"loss: {F_divergence.item(): .4f}    ")
             i += 1
             epoch_loss.append(F_divergence.item())
 
         loss_log.append(np.mean(epoch_loss))
         torch.save(model.state_dict(), f'checkpoints/model_epoch_{ep}.pt')
+
+        # Validation loss
+        model.eval()
+        val_loss = []
+        for X in val_data:
+            X = X.to(torch.float32).to(device)
+            t = model.ts[torch.randint(
+                0, len(model.ts), (X.shape[0],))].to(device)
+            F_divergence = model.sliced_score_matching(X, t)
+            F_divergence = torch.neg(F_divergence)
+            val_loss.append(F_divergence.item())
+
+        val_loss_log.append(np.mean(val_loss))
+
+        model.train()
+
+        print(f"epoch: {ep: 0{4}d}   ",
+                f"train loss: {loss_log[-1]: .4f}    ",
+                f"val loss: {val_loss_log[-1]: .4f}")
+
         if np.mean(epoch_loss) < 1e-6:
             print('early termination')
             break
 
-    return loss_log
+    return loss_log, val_loss_log
 
 
 def main(config):
@@ -63,6 +118,8 @@ def main(config):
     data_dir = config['data_dir']
     epochs = config['epochs']
     batch_size = config['batch_size']
+    val_ratio = config['val_ratio']
+    test_ratio = config['test_ratio']
 
     unet = UNet()
     if config['checkpoint'] is not None:
@@ -76,17 +133,35 @@ def main(config):
 
     optimizer = torch.optim.Adam(
         model.parameters(), lr=lr)
+    
+    # Split the data into train, validation and test sets
+    train_ind,val_ind,test_ind = train_val_test_split(val_ratio, test_ratio, data_dir,shuffle=True)
 
-    data = ValueMapData(data_dir)
-    data_loader = DataLoader(data, batch_size=batch_size, pin_memory=True)
+    # Create data loaders
+    train_data = ValueMapData(data_dir, train_ind)
+    train_data_loader = DataLoader(train_data, batch_size=batch_size, pin_memory=True)
+
+    val_data = ValueMapData(data_dir, val_ind)
+    val_data_loader = DataLoader(val_data, batch_size=batch_size, pin_memory=True)
+
+    test_data = ValueMapData(data_dir, test_ind)
+    test_data_loader = DataLoader(test_data, batch_size=batch_size, pin_memory=True)
+    
 
     os.makedirs('checkpoints/', exist_ok=True)
-    loss_log = train(model, optimizer, data_loader, epochs)
+    loss_log,val_loss_log = train(model, optimizer, train_data_loader, val_data_loader, epochs)
 
-    plot_loss(loss_log)
+    plot_loss(loss_log,'train_loss')
+    plot_loss(val_loss_log,'val_loss')
 
     os.makedirs('models/', exist_ok=True)
     torch.save(model.state_dict(), 'models/model1.pt')
+
+    # Test loss
+
+    test_loss = test(model, test_data_loader)
+    print(f"Test loss: {test_loss}")
+
 
 
 if __name__ == "__main__":

@@ -3,3 +3,7 @@ batch_size: 512
 lr: 0.001 # learning rate
 data_dir: "data/p1/"
 checkpoint: null
+val_ratio: 0.1
+test_ratio: 0.1
+
+

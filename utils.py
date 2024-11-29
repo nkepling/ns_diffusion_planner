@@ -5,7 +5,7 @@ import yaml
 
 
 class ValueMapData(Dataset):
-    def __init__(self, data_dir) -> None:
+    def __init__(self, data_dir,indices=None) -> None:
         """
         Initializes the dataset by listing all .pt files in the data directory.
 
@@ -18,7 +18,10 @@ class ValueMapData(Dataset):
         if not self.file_list:
             raise ValueError(
                 f"No .pt files found in the directory: {data_dir}")
-
+        
+        if indices is not None:
+            self.file_list = [self.file_list[i] for i in indices]
+            
     def __getitem__(self, index):
         """
         Reads and decompresses an .pt file by index.
