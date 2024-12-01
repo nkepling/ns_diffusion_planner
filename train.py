@@ -15,6 +15,7 @@ elif torch.backends.mps.is_available():
 else:
     device = torch.device('cpu')
 
+
 def train_val_test_split(val_ratio, test_ratio, data_dir, shuffle=True):
     """Splits the data into train, validation and test sets.
 
@@ -51,7 +52,8 @@ def test(model, data):
 
     return np.mean(loss)
 
-def plot_loss(loss_log,title='Loss'):
+
+def plot_loss(loss_log, title='Loss'):
     os.makedirs('plots/', exist_ok=True)
     plt.plot(loss_log)
     plt.xlabel('Epoch')
@@ -103,10 +105,10 @@ def train(model, optimizer, train_data, val_data, epochs):
         model.train()
 
         print(f"epoch: {ep: 0{4}d}   ",
-                f"train loss: {loss_log[-1]: .4f}    ",
-                f"val loss: {val_loss_log[-1]: .4f}")
+              f"train loss: {loss_log[-1]: .4f}    ",
+              f"val loss: {val_loss_log[-1]: .4f}")
 
-        if np.mean(epoch_loss) < 1e-6:
+        if np.mean(epoch_loss) == 0:
             print('early termination')
             break
 
@@ -133,35 +135,38 @@ def main(config):
 
     optimizer = torch.optim.Adam(
         model.parameters(), lr=lr)
-    
+
     # Split the data into train, validation and test sets
-    train_ind,val_ind,test_ind = train_val_test_split(val_ratio, test_ratio, data_dir,shuffle=True)
+    train_ind, val_ind, test_ind = train_val_test_split(
+        val_ratio, test_ratio, data_dir, shuffle=True)
 
     # Create data loaders
     train_data = ValueMapData(data_dir, train_ind)
-    train_data_loader = DataLoader(train_data, batch_size=batch_size, pin_memory=True)
+    train_data_loader = DataLoader(
+        train_data, batch_size=batch_size, pin_memory=True)
 
     val_data = ValueMapData(data_dir, val_ind)
-    val_data_loader = DataLoader(val_data, batch_size=batch_size, pin_memory=True)
+    val_data_loader = DataLoader(
+        val_data, batch_size=batch_size, pin_memory=True)
 
     test_data = ValueMapData(data_dir, test_ind)
-    test_data_loader = DataLoader(test_data, batch_size=batch_size, pin_memory=True)
-    
+    test_data_loader = DataLoader(
+        test_data, batch_size=batch_size, pin_memory=True)
 
     os.makedirs('checkpoints/', exist_ok=True)
-    loss_log,val_loss_log = train(model, optimizer, train_data_loader, val_data_loader, epochs)
+    loss_log, val_loss_log = train(
+        model, optimizer, train_data_loader, val_data_loader, epochs)
 
-    plot_loss(loss_log,'train_loss')
-    plot_loss(val_loss_log,'val_loss')
+    plot_loss(loss_log, 'train_loss')
+    plot_loss(val_loss_log, 'val_loss')
 
     os.makedirs('models/', exist_ok=True)
-    torch.save(model.state_dict(), 'models/model1.pt')
+    torch.save(model.state_dict(), 'models/model0.pt')
 
     # Test loss
 
     test_loss = test(model, test_data_loader)
     print(f"Test loss: {test_loss}")
-
 
 
 if __name__ == "__main__":
