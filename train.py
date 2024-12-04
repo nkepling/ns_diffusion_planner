@@ -6,6 +6,7 @@ from diffusion import DiffusionModel
 from unet import UNet
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm, trange
 
 
 if torch.cuda.is_available():
@@ -42,7 +43,7 @@ def test(model, data):
 
     loss = []
 
-    for X in data:
+    for X in tqdm(data, desc="testing", ascii=" >=", leave=False):
         X = X.to(torch.float32).to(device)
         t = model.ts[torch.randint(
             0, len(model.ts), (X.shape[0],))].to(device)
@@ -66,10 +67,10 @@ def train(model, optimizer, train_data, val_data, epochs):
     val_loss_log = []
     model.train()
 
-    for ep in range(epochs):
+    for ep in trange(epochs, desc="epoch", ascii=" >=", leave=False):
         i = 1
         epoch_loss = []
-        for X in train_data:
+        for X in tqdm(train_data, desc="epoch_batch", ascii=" >=", leave=False):
             X = X.to(torch.float32).to(device)
             # assert X.device == model.device,f"got {X.device} expected {model.device}"
             # Sample random times t.
@@ -78,7 +79,6 @@ def train(model, optimizer, train_data, val_data, epochs):
                 0, len(model.ts), (X.shape[0],))].to(device)
             # calculate divergence and take step
             F_divergence = model.sliced_score_matching(X, t)
-            F_divergence = torch.neg(F_divergence)
             optimizer.zero_grad()
             F_divergence.backward()
             optimizer.step()
@@ -92,7 +92,7 @@ def train(model, optimizer, train_data, val_data, epochs):
         # Validation loss
         model.eval()
         val_loss = []
-        for X in val_data:
+        for X in tqdm(val_data, desc="epoch_val", ascii=" >=", leave=False):
             X = X.to(torch.float32).to(device)
             t = model.ts[torch.randint(
                 0, len(model.ts), (X.shape[0],))].to(device)
@@ -161,7 +161,7 @@ def main(config):
     plot_loss(val_loss_log, 'val_loss')
 
     os.makedirs('models/', exist_ok=True)
-    torch.save(model.state_dict(), 'models/model0.pt')
+    torch.save(model.state_dict(), config["model_save_path"])
 
     # Test loss
 

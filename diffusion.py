@@ -41,7 +41,7 @@ class DiffusionModel(nn.Module):
         gVS = gVS.flatten(start_dim=1)
 
         lhs = torch.sum(V * gVS, axis=1)
-        F_Divergence = torch.mean(lhs - rhs)
+        F_Divergence = torch.mean(lhs + rhs)
         return F_Divergence
 
     def time_embedding(self, t):
@@ -103,7 +103,8 @@ class DiffusionSampler(nn.Module):
         for t in reversed(self.ts):
             t = torch.tensor([t])
             noise = torch.randn(shape)
-            score = self.model(X, t) if weights is None else self.model(X, t, weights)
+            score = self.model(
+                X, t) if weights is None else self.model(X, t, weights)
             X = X + self.tau * score + sqrt(2 * self.tau) * noise
 
         return X
