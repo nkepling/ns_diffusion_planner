@@ -119,26 +119,14 @@ class UNet(torch.nn.Module):
 
         self.layer_1_embed = Dense(embed_dim, 32)
         self.layer_2_embed = Dense(embed_dim, 64)
-        self.layer_3_embed = Dense(embed_dim, 128)
-        self.layer_4_embed = Dense(embed_dim, 256)
-        self.layer_5_embed = Dense(embed_dim, 512)
-
-        self.layer_6_embed = Dense(embed_dim, 256)
-        self.layer_7_embed = Dense(embed_dim, 128)
-        self.layer_8_embed = Dense(embed_dim, 64)
+       
         self.layer_9_embed = Dense(embed_dim, 32)
 
         # Double Convolution Layers
 
         self.layer_1 = DoubleConv(4, 32)
         self.layer_2 = DoubleConv(32, 64)
-        self.layer_3 = DoubleConv(64, 128)
-        self.layer_4 = DoubleConv(128, 256)
-        self.layer_5 = DoubleConv(256, 512)
-
-        self.layer_6 = DoubleConv(512, 256)
-        self.layer_7 = DoubleConv(256, 128)
-        self.layer_8 = DoubleConv(128, 64)
+     
         self.layer_9 = DoubleConv(64, 32)
 
         # Output Layer
@@ -152,7 +140,7 @@ class UNet(torch.nn.Module):
         embed = self.act(self.embed(t))
 
         # Left Side of the UNet
-        # 1, 10, 10 -> 32, 10, 10
+        # 4, 10, 10 -> 32, 10, 10
         layer_1_out = self.layer_1(x, self.layer_1_embed(embed))
         layer_1_out = self.spatial_attention(
             layer_1_out)  # Apply spatial attention
@@ -163,43 +151,8 @@ class UNet(torch.nn.Module):
         layer_2_out = self.spatial_attention(
             layer_2_out)  # Apply spatial attention
 
-        layer_3_out = self.layer_3(
-            self.down(layer_2_out),
-            self.layer_3_embed(embed))  # 64, 5, 5 -> 128, 3, 3
 
-        layer_3_out = self.spatial_attention(
-            layer_3_out)  # Apply spatial attention
-
-        # 128, 3, 3 -> 256, 2, 2
-        layer_4_out = self.layer_4(self.down(layer_3_out),
-                                   self.layer_4_embed(embed))
-        layer_4_out = self.spatial_attention(
-            layer_4_out)  # Apply spatial attention
-
-        # 256, 2, 2 -> 512, 1, 1
-        layer_5_out = self.layer_5(self.down(layer_4_out),
-                                   self.layer_5_embed(embed))
-
-        # Right Side of the UNet
-        up_1_out = self.up1(layer_5_out)  # 512, 1, 1 -> 256, 2, 2
-        layer_6_out = self.layer_6(torch.cat([up_1_out, layer_4_out], 1),
-                                   self.layer_6_embed(embed))
-        layer_6_out = self.spatial_attention(
-            layer_6_out)  # Apply spatial attention
-
-        up_2_out = self.up2(layer_6_out)  # 256, 2, 2 -> 128, 3, 3
-        layer_7_out = self.layer_7(torch.cat([up_2_out, layer_3_out], 1),
-                                   self.layer_7_embed(embed))
-        layer_7_out = self.spatial_attention(
-            layer_7_out)  # Apply spatial attention
-
-        up_3_out = self.up3(layer_7_out)  # 128, 3, 3 -> 64, 5, 5
-        layer_8_out = self.layer_8(torch.cat([up_3_out, layer_2_out], 1),
-                                   self.layer_8_embed(embed))
-        layer_8_out = self.spatial_attention(
-            layer_8_out)  # Apply spatial attention
-
-        up_4_out = self.up4(layer_8_out)  # 64, 5, 5 -> 32, 10, 10
+        up_4_out = self.up4(layer_2_out)  # 64, 5, 5 -> 32, 10, 10
         layer_9_out = self.layer_9(torch.cat([up_4_out, layer_1_out], 1),
                                    self.layer_9_embed(embed))
         layer_9_out = self.spatial_attention(

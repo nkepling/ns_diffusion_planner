@@ -7,6 +7,7 @@ from unet import UNet
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm, trange
+import sys
 
 
 if torch.cuda.is_available():
@@ -45,10 +46,10 @@ def test(model, data):
 
     for X in tqdm(data, desc="testing", ascii=" >=", leave=False):
         X = X.to(torch.float32).to(device)
-        t = model.ts[torch.randint(
-            0, len(model.ts), (X.shape[0],))].to(device)
-        F_divergence = model.sliced_score_matching(X, t)
-        F_divergence = torch.neg(F_divergence)
+        t_int = torch.randint(0, model.T, (X.shape[0],), device=device)
+        # calculate divergence and take step
+        Xt = model.perturb_data(X, t_int)
+        F_divergence = model.sliced_score_matching(Xt, t_int, 10)
         loss.append(F_divergence.item())
 
     return np.mean(loss)
@@ -62,28 +63,30 @@ def plot_loss(loss_log, title='Loss'):
     plt.savefig('plots/' + f"{title}.png")
 
 
-def train(model, optimizer, train_data, val_data, epochs):
+def train(model: DiffusionModel, optimizer, train_data, val_data, epochs):
     loss_log = []
     val_loss_log = []
     model.train()
 
     for ep in trange(epochs, desc="epoch", ascii=" >=", leave=False):
-        i = 1
         epoch_loss = []
+
+        model.train()
         for X in tqdm(train_data, desc="epoch_batch", ascii=" >=", leave=False):
             X = X.to(torch.float32).to(device)
+            X = torch.mean(X, dim=1, keepdim=True)
             # assert X.device == model.device,f"got {X.device} expected {model.device}"
             # Sample random times t.
             # These times t are applied to each map in the batch
-            t = model.ts[torch.randint(
-                0, len(model.ts), (X.shape[0],))].to(device)
+            t_int = torch.randint(0, model.T, (X.shape[0],), device=device)
             # calculate divergence and take step
-            F_divergence = model.sliced_score_matching(X, t)
+            Xt = model.perturb_data(X, t_int)
+            F_divergence = model.sliced_score_matching(Xt, t_int, 10)
             optimizer.zero_grad()
             F_divergence.backward()
             optimizer.step()
+            tqdm.write(f"train loss: {F_divergence: .4f}")
 
-            i += 1
             epoch_loss.append(F_divergence.item())
 
         loss_log.append(np.mean(epoch_loss))
@@ -94,19 +97,18 @@ def train(model, optimizer, train_data, val_data, epochs):
         val_loss = []
         for X in tqdm(val_data, desc="epoch_val", ascii=" >=", leave=False):
             X = X.to(torch.float32).to(device)
-            t = model.ts[torch.randint(
-                0, len(model.ts), (X.shape[0],))].to(device)
-            F_divergence = model.sliced_score_matching(X, t)
-            F_divergence = torch.neg(F_divergence)
+            # t = model.ts[torch.randint(
+            #     0, len(model.ts), (X.shape[0],))].to(device)
+            t_int = torch.randint(0, model.T, (X.shape[0],), device=device)
+            Xt = model.perturb_data(X, t_int)
+            F_divergence = model.sliced_score_matching(X, t_int, 10)
             val_loss.append(F_divergence.item())
 
         val_loss_log.append(np.mean(val_loss))
 
-        model.train()
-
-        print(f"epoch: {ep: 0{4}d}   ",
-              f"train loss: {loss_log[-1]: .4f}    ",
-              f"val loss: {val_loss_log[-1]: .4f}")
+        tqdm.write(f"epoch: {ep: 0{4}d}   \
+                     train loss: {loss_log[-1]: .4f}    \
+                     val loss: {val_loss_log[-1]: .4f}")
 
         if np.mean(epoch_loss) == 0:
             print('early termination')
@@ -143,15 +145,15 @@ def main(config):
     # Create data loaders
     train_data = ValueMapData(data_dir, train_ind)
     train_data_loader = DataLoader(
-        train_data, batch_size=batch_size, pin_memory=True)
+        train_data, batch_size=batch_size, pin_memory=True, num_workers=12)
 
     val_data = ValueMapData(data_dir, val_ind)
     val_data_loader = DataLoader(
-        val_data, batch_size=batch_size, pin_memory=True)
+        val_data, batch_size=batch_size, pin_memory=True, num_workers=12)
 
     test_data = ValueMapData(data_dir, test_ind)
     test_data_loader = DataLoader(
-        test_data, batch_size=batch_size, pin_memory=True)
+        test_data, batch_size=batch_size, pin_memory=True, num_workers=12)
 
     os.makedirs('checkpoints/', exist_ok=True)
     loss_log, val_loss_log = train(
