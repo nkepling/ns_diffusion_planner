@@ -37,7 +37,6 @@ def get_diffusion_coeff_fn(sigma, device):
 
 from torch.utils.data import Dataset
 import os
-import yaml
 
 
 class ValueMapData(Dataset):

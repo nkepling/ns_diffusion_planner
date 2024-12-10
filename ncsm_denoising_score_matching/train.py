@@ -1,7 +1,7 @@
 import tqdm
 import torch
 from torch.optim import Adam
-from unet import ScoreNet
+from ..sde_song.unet import ScoreNet
 from loss import denoise_score_matching
 from torch.utils.data import DataLoader
 import os
@@ -10,7 +10,7 @@ from utils import gen_geometric_progression, ValueMapData
 
 def train():
     device = torch.device('cuda')
-    score_model = torch.nn.DataParallel(ScoreNet(source_channels=4))
+    score_model = torch.nn.DataParallel(ScoreNet(lambda x: x))
     if os.path.exists('sanity_check.pt'):
         print('loading checkpoint')
         score_model.load_state_dict(torch.load('sanity_check.pt', weights_only=True))

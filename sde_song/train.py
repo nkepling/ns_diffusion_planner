@@ -20,7 +20,7 @@ batch_size =  4096
 
 lr=1e-4 
 
-dataset = ValueMapData('../data/p1')
+dataset = ValueMapData('../data/p0')
 data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=12)
 
 optimizer = Adam(score_model.parameters(), lr=lr)
