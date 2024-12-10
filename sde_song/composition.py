@@ -22,7 +22,7 @@ def hole_conditional_score(X, maps):
     score = torch.neg(X * zeros)
 
     # output dim (batch, actions, row, col)
-    return score
+    return score, (1 - zeros)
 
 
 class Conditional(nn.Module):
@@ -34,18 +34,20 @@ class Conditional(nn.Module):
 
     def forward(self, X, t):
         base_score = self.base(X, t)
-        cond_score = self.conditional(X, self.maps)
-        return base_score +  10 * cond_score
+        cond_score, mask = self.conditional(X, self.maps)
+        masked_base_score = base_score * mask
+        return masked_base_score + cond_score
 
 
 class Composition(nn.Module):
-    def __init__(self, models):
+    def __init__(self, models, weights):
         super(Composition, self).__init__()
         self.models = models
+        self.weights = weights
 
-    def forward(self, X, ts, weights):
+    def forward(self, X, ts):
         score = torch.zeros_like(X)
-        for model, weight in zip(self.models, weights):
+        for model, weight in zip(self.models, self.weights):
             score += model(X, ts) * weight
 
         return score

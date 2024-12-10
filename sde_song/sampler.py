@@ -7,7 +7,10 @@ def Euler_Maruyama_sampler(score_model,
                            batch_size=64,
                            num_steps=500,
                            device='cuda',
-                           eps=1e-3):
+                           eps=1e-3, 
+                           init_x=None,
+                           mask=None, 
+                           map_size=10):
   """Generate samples from score-based models with the Euler-Maruyama solver.
 
   Args:
@@ -25,8 +28,9 @@ def Euler_Maruyama_sampler(score_model,
     Samples.
   """
   t = torch.ones(batch_size, device=device)
-  init_x = torch.randn(batch_size, 4, 10, 10, device=device) \
-    * marginal_prob_std(t)[:, None, None, None]
+  if init_x == None:
+    init_x = torch.randn(batch_size, 4, map_size, map_size, device=device) \
+      * marginal_prob_std(t)[:, None, None, None]
   time_steps = torch.linspace(1., eps, num_steps, device=device)
   step_size = time_steps[0] - time_steps[1]
   x = init_x
@@ -35,6 +39,7 @@ def Euler_Maruyama_sampler(score_model,
       batch_time_step = torch.ones(batch_size, device=device) * time_step
       g = diffusion_coeff(batch_time_step)
       mean_x = x + (g**2)[:, None, None, None] * score_model(x, batch_time_step) * step_size
-      x = mean_x + torch.sqrt(step_size) * g[:, None, None, None] * torch.randn_like(x)
+      noise = torch.randn_like(x) if mask == None else torch.randn_like(x) * mask
+      x = mean_x + torch.sqrt(step_size) * g[:, None, None, None] * noise
   # Do not include any noise in the last sampling step.
   return mean_x
